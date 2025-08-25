@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>自習タイマー</title>
+  <style>
+    :root{
+      --bg:#f7fbff;
+      --panel:#ffffff;
+      --primary:#7ec8ff;
+      --primary-strong:#4fb3ff;
+      --accent:#ffd38a;
+      --accent-strong:#ffbd4a;
+      --ok:#81e6a8;
+      --text:#333;
+      --muted:#7a7a7a;
+      --danger:#ff8aa1;
+      --shadow: 0 10px 28px rgba(0,0,0,.08);
+      --radius: 24px;
+    }
+
+    html, body{
+      height:100%;
+      margin:0;
+      background: linear-gradient(180deg, #e9f6ff, #fff);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "ヒラギノ角ゴ ProN W3", "Noto Sans JP", "Yu Gothic UI", sans-serif;
+      color:var(--text);
+    }
+
+    .app{
+      min-height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 16px;
+    }
+
+    .timer-shell{
+      width: min(90vw, 1100px);
+      height: min(80vh, 760px);
+      background: var(--panel);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: clamp(16px, 2.4vw, 28px);
+      position: relative;
+      display:flex;
+      flex-direction:column;
+      gap: clamp(8px, 1.4vw, 16px);
+    }
+
+    h1{
+      margin:0;
+      font-size: clamp(22px, 3.2vw, 36px);
+      letter-spacing: .02em;
+      display:flex;
+      align-items:center;
+      gap: 12px;
+    }
+    h1::before{
+      content:"⏱️";
+      font-size: 1.05em;
+    }
+
+    .card{
+      background: linear-gradient(180deg, #fff, #f9fdff);
+      border: 2px solid #e8f4ff;
+      border-radius: 18px;
+      padding: clamp(14px, 2vw, 18px);
+    }
+
+    .section-title{
+      font-weight: 700;
+      color:#246;
+      font-size: clamp(14px, 1.8vw, 18px);
+      margin-bottom: 10px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      margin-top: 20px;
+      gap:45px;
+    }
+
+    .opt-group{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .opt{
+      background:#fff;
+      border:2px solid #e5f1ff;
+      border-radius: 999px;
+      padding:8px 14px;
+      display:flex; align-items:center; gap:8px;
+      cursor:pointer;
+      user-select:none;
+      transition:.2s ease;
+    }
+    .opt input{ accent-color: var(--primary-strong); width:18px; height:18px; }
+    .opt:hover{ transform: translateY(-1px); box-shadow: 0 6px 14px rgba(79,179,255,.15); }
+
+    .time-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .num{ width: 6.5em; max-width:32vw; }
+
+    input[type="number"], select{
+      border:2px solid #e5f1ff;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: clamp(16px, 2.2vw, 18px);
+      outline: none;
+      background:#fff;
+    }
+
+    .btn{
+      appearance:none; border:none; cursor:pointer; user-select:none;
+      padding: 12px 18px; border-radius: 14px; font-weight:700;
+      background: linear-gradient(180deg, var(--primary), var(--primary-strong));
+      color:#05324a; font-size: clamp(16px, 2.4vw, 20px);
+      box-shadow: 0 8px 0 #3aa3e6;
+      transition: transform .06s ease;
+    }
+    .btn:active{ transform: translateY(2px); box-shadow: 0 4px 0 #3aa3e6; }
+
+    .btn.secondary{
+      background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+      box-shadow: 0 8px 0 #e39e2a;
+      color:#5a3300;
+    }
+
+    .btn.reset{
+      position:absolute; right: clamp(12px, 1.8vw, 16px); top: clamp(12px, 1.8vw, 16px);
+      background: linear-gradient(180deg, #ffd0da, #ff9ab2);
+      color:#5e1020; box-shadow: 0 8px 0 #e4728b;
+      z-index: 2;
+      display:none;
+    }
+
+    /* タイマー画面 */
+    .timer-view{ flex:1; display:none; align-items:center; justify-content:center; position:relative; }
+    .settings-view{ flex:1; display:flex; flex-direction:column; }
+
+    .time-figure{
+      font-size: clamp(36px, 14vw, 150px);
+      font-weight: 800; letter-spacing:.02em;
+    }
+    .time-sub{ color:var(--muted); font-size: clamp(12px, 2.5vw, 14px); text-align:left; }
+
+    .line-wrap {
+      width: min(90%, 880px);
+      margin: 0 auto;
+      text-align: center;
+    }
+    .line-bar{ height: 20px; background: #eaf5ff; border-radius: 999px; overflow:hidden; border:2px solid #d6ecff; }
+    .line-fill{ height:100%; width:100%; background: linear-gradient(90deg, #a8dbff, #4fb3ff); }
+
+    .circle-wrap{ width: min(76vw, 600px); aspect-ratio: 1/1; position:relative; }
+    .circle-wrap svg{ width:100%; height:100%; display:block; }
+    .circle-bg{ stroke:#eef7ff; }
+    .circle-fg{ stroke:url(#grad); transition: stroke-dashoffset .1s linear; }
+    .circle-center{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; }
+
+    .footer{
+      display:flex; justify-content:center; margin-top:auto;
+    }
+
+    .modal-backdrop{
+      position:fixed; inset:0; background: rgba(0,0,0,.25);
+      display:none; align-items:center; justify-content:center; z-index:10;
+    }
+    .modal{
+      background:#fff; width: min(90vw, 420px); border-radius: 20px; padding: 22px;
+      box-shadow: var(--shadow); text-align:center;
+    }
+    .modal h2{ margin:6px 0 8px; font-size: clamp(22px, 3.8vw, 28px); }
+    .modal p{ color:#444; }
+
+    .sr-only{ position:absolute; left:-10000px; top:auto; width:1px; height:1px; overflow:hidden; }
+  
+ .num {
+  width: 80px;
+  max-width: none;
+}
+ 
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="timer-shell" role="application" aria-label="自習タイマー">
+      <h1>タイマー</h1>
+
+      <!-- 設定画面 -->
+      <section id="settings" class="settings-view card" aria-label="タイマー設定">
+        <div class="section-title">【　設定　】</div>
+        <div class="grid">
+          <!-- 表示タイプ -->
+          <div>
+            <div class="section-title">表示</div>
+            <div class="opt-group" role="radiogroup" aria-label="表示タイプ">
+              <label class="opt"><input type="radio" name="display" value="line" checked> Line</label>
+              <label class="opt"><input type="radio" name="display" value="circle"> Circle</label>
+              <label class="opt"><input type="radio" name="display" value="digits"> 数字のみ</label>
+            </div>
+          </div>
+
+          <!-- 終了音 -->
+          <div>
+            <div class="section-title">終了音</div>
+            <div class="opt-group" role="radiogroup" aria-label="終了音">
+              <label class="opt"><input type="radio" name="sound" value="on" checked> ON</label>
+              <label class="opt"><input type="radio" name="sound" value="off"> OFF</label>
+            </div>
+          </div>
+
+          <!-- 時間入力 -->
+          <div>
+            <div class="section-title">時間</div>
+            <div class="time-row">
+              <label><input id="min" class="num" type="number" min="0" inputmode="numeric" value="0" aria-label="分">分</label>
+              <label><input id="sec" class="num" type="number" min="0" inputmode="numeric" value="30" aria-label="秒">秒</label>
+            </div>
+            <p class="time-sub">※ 0分0秒は設定できません</p>
+          </div>
+        </div>
+
+        <div class="footer" style="margin-bottom:30px;">
+          <button id="startBtn" class="btn" aria-label="開始">開始</button>
+        </div>
+      </section>
+
+      <!-- タイマー画面 -->
+      <section id="timerView" class="timer-view" aria-live="polite" aria-atomic="true">
+        <button id="resetBtn" class="btn reset" aria-label="リセット">リセット</button>
+
+        <!-- Line レイアウト -->
+        <div id="lineLayout" class="line-wrap" hidden>
+          <div class="time-figure" id="timeLine" style="margin-bottom:20px;">00:00</div>
+          <div class="line-bar" aria-hidden="true" title="残り時間のバー">
+            <div id="lineFill" class="line-fill"></div>
+          </div>
+        </div>
+
+        <!-- Circle レイアウト -->
+        <div id="circleLayout" class="circle-wrap" hidden>
+          <svg viewBox="0 0 220 220" aria-hidden="true">
+            <defs>
+              <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#a8dbff"/>
+                <stop offset="100%" stop-color="#4fb3ff"/>
+              </linearGradient>
+            </defs>
+            <circle class="circle-bg" cx="110" cy="110" r="90" fill="none" stroke-width="18" />
+            <circle id="circleFg" class="circle-fg" cx="110" cy="110" r="90" fill="none" stroke-width="18"
+                    stroke-linecap="round" stroke-dasharray="565.48" stroke-dashoffset="0" />
+          </svg>
+          <div class="circle-center">
+            <div class="time-figure" id="timeCircle">00:00</div>
+          </div>
+        </div>
+
+        <!-- 数字のみレイアウト -->
+        <div id="digitsLayout" hidden>
+          <div class="time-figure" id="timeDigits">00:00</div>
+        </div>
+      </section>
+
+      <audio id="finishSound" src="timer.mp3" preload="auto"></audio>
+
+      <!-- モーダル -->
+      <div id="modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal">
+          <div style="font-size:40px">🎉</div>
+          <h2 id="modalTitle">終了！</h2>
+          <div style="margin-top:12px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button id="okBtn" class="btn secondary" aria-label="OK">OK</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+(function(){
+  // 要素取得
+  const settings = document.getElementById('settings');
+  const timerView = document.getElementById('timerView');
+  const startBtn = document.getElementById('startBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const inputMin = document.getElementById('min');
+  const inputSec = document.getElementById('sec');
+  const modal = document.getElementById('modal');
+  const okBtn = document.getElementById('okBtn');
+  const audioEl = document.getElementById('finishSound');
+
+  // レイアウト要素
+  const lineLayout = document.getElementById('lineLayout');
+  const circleLayout = document.getElementById('circleLayout');
+  const digitsLayout = document.getElementById('digitsLayout');
+  const timeLine = document.getElementById('timeLine');
+  const timeCircle = document.getElementById('timeCircle');
+  const timeDigits = document.getElementById('timeDigits');
+  const lineFill = document.getElementById('lineFill');
+  const circleFg = document.getElementById('circleFg');
+
+  // 円周（r=90）
+  const CIRC = 2 * Math.PI * 90; // ≒565.48
+  circleFg.setAttribute('stroke-dasharray', CIRC.toFixed(2));
+
+  // 状態
+  let totalMs = 0;
+  let endAt = 0;
+  let tickId = null;
+  let currentMode = 'line';
+  let soundOn = true;
+
+  function showSettings(){
+    stopTimer();
+    timerView.style.display = 'none';
+    settings.style.display = 'flex';
+    resetBtn.style.display = 'none';
+    hideModal();
+  }
+
+  function showTimer(){
+    settings.style.display = 'none';
+    timerView.style.display = 'flex';
+    resetBtn.style.display = 'inline-block';
+  }
+
+  function fmt(ms){
+    const t = Math.max(0, Math.ceil(ms/1000));
+    const m = Math.floor(t/60).toString().padStart(2,'0');
+    const s = (t%60).toString().padStart(2,'0');
+    return `${m}:${s}`;
+  }
+
+  function pick(name){
+    return (document.querySelector(`input[name="${name}"]:checked`)||{}).value;
+  }
+
+  function switchLayout(mode){
+    lineLayout.hidden = mode !== 'line';
+    circleLayout.hidden = mode !== 'circle';
+    digitsLayout.hidden = mode !== 'digits';
+  }
+
+  function updateVisual(remain){
+    const text = fmt(remain);
+    if(currentMode==='line'){
+      timeLine.textContent = text;
+      const ratio = Math.max(0, Math.min(1, remain/totalMs));
+      lineFill.style.width = `${ratio*100}%`;
+    }else if(currentMode==='circle'){
+      timeCircle.textContent = text;
+      const ratio = Math.max(0, Math.min(1, remain/totalMs));
+      const offset = CIRC*(1-ratio);
+      circleFg.style.strokeDashoffset = offset;
+    }else{
+      timeDigits.textContent = text;
+    }
+  }
+
+  function startTimer(){
+    const m = Math.max(0, parseInt(inputMin.value||'0',10));
+    const s = Math.max(0, parseInt(inputSec.value||'0',10));
+    const setMs = (m*60 + s) * 1000;
+    if(!setMs){
+      alert('時間を設定してください（0分0秒は不可）');
+      return;
+    }
+    currentMode = pick('display') || 'line';
+    soundOn = (pick('sound')||'on') === 'on';
+    switchLayout(currentMode);
+    totalMs = setMs;
+    endAt = Date.now() + totalMs;
+    showTimer();
+
+    // 初期描画
+    if(currentMode==='line') lineFill.style.width = '100%';
+    if(currentMode==='circle') circleFg.style.strokeDashoffset = 0;
+    updateVisual(totalMs);
+
+    // モバイル向け：先に無音再生でアンロック（失敗は無視）
+    try{ audioEl.play().then(()=>{ audioEl.pause(); audioEl.currentTime = 0; }).catch(()=>{}); }catch(e){}
+
+    // 100msごとに更新
+    tickId = setInterval(()=>{
+      const remain = endAt - Date.now();
+      if(remain <= 0){ finish(); return; }
+      updateVisual(remain);
+    }, 100);
+  }
+
+  function stopTimer(){
+    if(tickId){ clearInterval(tickId); tickId = null; }
+  }
+
+  function finish(){
+    stopTimer();
+    updateVisual(0);
+    // 音
+    if(soundOn){
+      try{ audioEl.currentTime = 0; audioEl.play().catch(()=>{}); }catch(e){}
+    }
+    // モーダル
+    showModal();
+  }
+
+  function showModal(){ modal.style.display = 'flex'; }
+  function hideModal(){ modal.style.display = 'none'; }
+
+  // イベント
+  startBtn.addEventListener('click', startTimer);
+  resetBtn.addEventListener('click', showSettings);
+  okBtn.addEventListener('click', () => {
+    audioEl.pause();
+    audioEl.currentTime = 0;
+    showSettings();
+  });
+  modal.addEventListener('click', (e)=>{ if(e.target===modal) showSettings(); });
+
+  // Enterキーで開始
+  document.addEventListener('keydown', (e)=>{
+    if(settings.style.display !== 'none' && (e.key==='Enter')){
+      startTimer();
+    }
+  });
+
+  // 初期状態
+  showSettings();
+})();
+</script>
+</body>
+</html>

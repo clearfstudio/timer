@@ -39,6 +39,8 @@
     .timer-shell{
       width: min(90vw, 1100px);
       height: min(80vh, 760px);
+      max-height: min(80vh, 760px);
+      overflow: auto;
       background: var(--panel);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
@@ -151,7 +153,7 @@
     .line-fill{ height:100%; width:100%; background: linear-gradient(90deg, #a8dbff, #4fb3ff); }
 
 .circle-wrap{
-  --circle-size: min(80vmin, 640px);
+  --circle-size: min(90vw, 70vh, 560px);
   width: var(--circle-size);
   aspect-ratio: 1/1;
   position: relative;
@@ -185,9 +187,18 @@
 }
 
 #circleLayout .time-figure{
-  font-size: clamp(28px, calc(var(--circle-size) * 0.24), 160px);
+  font-size: clamp(28px, calc(var(--circle-size) * 0.28), 160px);
   line-height: 1;
   text-align: center;
+}
+
+.settings-view,
+.timer-view{
+  min-height: 0;
+}
+
+.settings-view{
+  overflow: auto;
 }
   </style>
 </head>
@@ -241,7 +252,7 @@
 
         <!-- Line レイアウト -->
         <div id="lineLayout" class="line-wrap" hidden>
-          <div class="time-figure" id="timeLine" style="margin-bottom:20px;">00:00</div>
+          <div class="time-figure" id="timeLine" style="margin-bottom:20px; font-size:260px;">00:00</div>
           <div class="line-bar" aria-hidden="true" title="残り時間のバー">
             <div id="lineFill" class="line-fill"></div>
           </div>
@@ -267,7 +278,7 @@
 
         <!-- 数字のみレイアウト -->
         <div id="digitsLayout" hidden>
-          <div class="time-figure" id="timeDigits">00:00</div>
+          <div class="time-figure" id="timeDigits" style="font-size:260px;">00:00</div>
         </div>
       </section>
 
@@ -323,6 +334,7 @@
 
   function showSettings(){
     stopTimer();
+    stopSound();
     timerView.style.display = 'none';
     settings.style.display = 'flex';
     resetBtn.style.display = 'none';
@@ -388,8 +400,20 @@
     if(currentMode==='circle') circleFg.style.strokeDashoffset = 0;
     updateVisual(totalMs);
 
-    // モバイル向け：先に無音再生でアンロック（失敗は無視）
-    try{ audioEl.play().then(()=>{ audioEl.pause(); audioEl.currentTime = 0; }).catch(()=>{}); }catch(e){}
+// モバイル向け：先に無音再生でアンロック（失敗は無視）
+try{
+  const prevMuted = audioEl.muted;
+  audioEl.muted = true;
+  audioEl.play()
+    .then(()=>{
+      audioEl.pause();
+      audioEl.currentTime = 0;
+      audioEl.muted = prevMuted;
+    })
+    .catch(()=>{
+      audioEl.muted = prevMuted;
+    });
+}catch(e){}
 
     // 100msごとに更新
     tickId = setInterval(()=>{
@@ -437,9 +461,16 @@
   // 初期状態
   showSettings();
 })();
+
+function stopSound(){
+  try{
+    audioEl.pause();
+    audioEl.currentTime = 0;
+  }catch(e){}
+}
+
 </script>
 </body>
 </html>
-
 
 
